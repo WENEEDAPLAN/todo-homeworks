@@ -1,0 +1,12 @@
+package com.example.sokolovtodolist.ui.theme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+
+@Composable
+fun TodoTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = lightColorScheme(), // Базовая светлая схема
+        content = content
+    )
+}
