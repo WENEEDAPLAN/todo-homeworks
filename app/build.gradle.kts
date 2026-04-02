@@ -50,11 +50,18 @@ android {
 
 
 dependencies {
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
+
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.foundation)
+    implementation(libs.espresso.core)
+    implementation(libs.androidx.ui.geometry)
 
     // Jetpack Compose
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")

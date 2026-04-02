@@ -1,94 +1,103 @@
 package com.example.sokolovtodolist
 
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.*
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.sokolovtodolist.data.FileStorage
 import com.example.sokolovtodolist.model.Importance
 import com.example.sokolovtodolist.model.Item
+import com.example.sokolovtodolist.ui.theme.components.ColorPickerScreen
+import com.example.sokolovtodolist.ui.theme.screens.EditScreen
+import com.example.sokolovtodolist.ui.theme.screens.ListScreen
 import java.io.File
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import androidx.compose.ui.graphics.Color
+import com.example.sokolovtodolist.ui.theme.components.ColorHelper
 
-class MainActivity : androidx.activity.ComponentActivity() {
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
 
         installSplashScreen()
 
         val storage = FileStorage(File(filesDir, "todo.json"))
 
         if (storage.getItems().isEmpty()) {
-            storage.add(
-                Item(
-                    text = "Купить шоколадку",
-                    importance = Importance.ordinary,
-                    isDone = true
-                )
-            )
-            storage.add(
-                Item(
-                    text = "Сдать лабу",
-                    importance = Importance.unimportant,
-                    deadline = LocalDateTime.now().plusDays(3)
-                )
-            )
-            storage.add(Item(
-                text = "Посмотреть фильм",
-                importance = Importance.unimportant)
-            )
-
+            storage.add(Item(text = "Купить шоколадку", importance = Importance.ordinary, isDone = true))
+            storage.add(Item(text = "Сдать лабу", importance = Importance.unimportant, deadline = LocalDateTime.now().plusDays(3)))
+            storage.add(Item(text = "Посмотреть фильм", importance = Importance.unimportant))
             storage.save()
         }
 
         setContent {
-            // Получаем список задач
-            val items = storage.getItems()
-            TodoAppScreen(items)
-        }
-    }
-}
 
-@Composable
-fun TodoAppScreen(items: List<Item>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(items) { item ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(text = item.text, fontSize = 16.sp)
-                    if (item.deadline != null) {
-                        Text(
-                            text = "Дедлайн: ${item.deadline.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))}",
-                            fontSize = 12.sp
-                        )
-                    }
-                    Text(
-                        text = "Важность: ${item.importance.name}",
-                        fontSize = 12.sp
+            var items by remember { mutableStateOf(storage.getItems()) }
+            val navController = rememberNavController()
+
+            NavHost(navController = navController, startDestination = "list") {
+                // Список задач
+                composable("list") {
+                    ListScreen(
+                        items = items,
+                        onItemClick = { item ->
+                            navController.navigate("edit/${item.uid}")
+                        },
+                        onAddClick = {
+                            navController.navigate("edit/new")
+                        }
+                    )
+                }
+
+
+                composable(
+                    route = "edit/{itemId}",
+                    arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getString("itemId") ?: "new"
+                    val initialItem = items.find { it.uid == itemId }
+
+                    EditScreen(
+                        itemId = itemId,
+                        initialItem = initialItem,
+                        onBack = { navController.popBackStack() },
+                        onSave = { updatedItem ->
+                            if (itemId == "new") {
+                                storage.add(updatedItem)
+                            } else {
+                                storage.update(updatedItem)
+                                items = storage.getItems()
+                            }
+                            storage.save()
+                            items = storage.getItems()
+                            navController.popBackStack()
+                        },
+                        navController = navController
+                    )
+                }
+
+
+                composable("colorPicker/{initialColor}") { backStackEntry ->
+                    val initialColor = backStackEntry.arguments?.getString("initialColor") ?: "#FFFFFFFF"
+                    ColorPickerScreen(
+                        initialColor = android.graphics.Color.parseColor(initialColor),
+                        onColorSelected = { newColorString ->
+                            Log.d("MainActivity", "Color selected: $newColorString")
+                            ColorHelper.setSelectedColor(newColorString)
+                            navController.popBackStack()
+                        },
+                        onDismiss = { navController.popBackStack() }
                     )
                 }
             }
         }
     }
 }
-
