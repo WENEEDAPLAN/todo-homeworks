@@ -1,4 +1,5 @@
 package com.example.sokolovtodolist.data
+import android.util.Log
 import com.example.sokolovtodolist.model.Item
 import com.example.sokolovtodolist.model.json
 import com.example.sokolovtodolist.model.parse
@@ -45,6 +46,8 @@ class FileStorage(private val file: File) {
      */
     fun save() {
         try {
+            Log.d("FileStorage", "Saving items to file:")
+            items.forEach { Log.d("FileStorage", "  ${it.uid}: color=${it.color}") }
             val jsonArray = JSONArray()
             items.forEach { item ->
                 jsonArray.put(item.json)
@@ -110,6 +113,17 @@ class FileStorage(private val file: File) {
             logger.debug("removeExpired: удалено {} просроченных задач", removedCount)
         }
         return removedCount
+    }
+
+    fun update(item: Item) {
+        Log.d("FileStorage", "Updating: uid=${item.uid}, color=${item.color}")
+        val index = items.indexOfFirst { it.uid == item.uid }
+        if (index != -1) {
+            items[index] = item
+            Log.d("FileStorage", "Updated in memory, new color=${items[index].color}")
+        } else {
+            add(item)
+        }
     }
 }
 
