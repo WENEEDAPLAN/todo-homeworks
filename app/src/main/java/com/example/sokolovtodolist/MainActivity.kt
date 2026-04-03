@@ -53,6 +53,14 @@ class MainActivity : ComponentActivity() {
                         },
                         onAddClick = {
                             navController.navigate("edit/new")
+                        },
+                        onDeleteClick = { itemToDelete ->
+                            // Сносим из файлового хранилища
+                            storage.remove(itemToDelete.uid)
+                            storage.save()
+
+                            // Обновляем стейт, чтобы Compose понял, что надо перерисовать список
+                            items = storage.getItems()
                         }
                     )
                 }
