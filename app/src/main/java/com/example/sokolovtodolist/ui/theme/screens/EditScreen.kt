@@ -3,7 +3,8 @@ package com.example.sokolovtodolist.ui.theme.screens
 import android.util.Log
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.sokolovtodolist.model.Importance
 import com.example.sokolovtodolist.model.Item
@@ -11,43 +12,48 @@ import com.example.sokolovtodolist.ui.theme.components.ColorHelper
 import com.example.sokolovtodolist.ui.theme.components.FormCard
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDateTime
-import java.util.UUID
+import java.time.format.DateTimeFormatter
 
-// Предустановленные цвета в виде строк #AARRGGBB
 private val presetColorsString = listOf(
-    "#FFFFFFFF",  // белый
-    "#FFFF0000",  // красный
-    "#FF00FF00",  // зелёный
-    "#FF0000FF",  // синий
-    "#FFFFFF00",  // жёлтый
-    "#FF00FFFF",  // голубой
-    "#FFFF00FF",  // пурпурный
-    "#FFFF9800"   // оранжевый
+    "#FFFFFFFF", "#FFFF0000", "#FF00FF00", "#FF0000FF",
+    "#FFFFFF00", "#FF00FFFF", "#FFFF00FF", "#FFFF9800"
 )
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreen(
     itemId: String,
-    initialItem: Item?,
+    viewModel: EditViewModel,
+    navController: NavController,
     onBack: () -> Unit,
-    onSave: (Item) -> Unit,
-    navController: NavController
+    onSaveSuccess: () -> Unit
 ) {
-    var text by remember { mutableStateOf(initialItem?.text ?: "") }
-    var importance by remember { mutableStateOf(initialItem?.importance ?: Importance.ordinary) }
-    var isDone by remember { mutableStateOf(initialItem?.isDone ?: false) }
-    var colorString by remember { mutableStateOf(initialItem?.color ?: "#FFFFFFFF") }
-    var deadline by remember { mutableStateOf(initialItem?.deadline) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var customColorString by remember { mutableStateOf<String?>(null) }
+    val item by viewModel.item.collectAsStateWithLifecycle()
 
-    LaunchedEffect(initialItem) {
-        val initColor = initialItem?.color ?: "#FFFFFFFF"
-        customColorString = if (initColor !in presetColorsString) initColor else null
+    var text by rememberSaveable { mutableStateOf("") }
+    var importance by rememberSaveable { mutableStateOf(Importance.ordinary) }
+    var isDone by rememberSaveable { mutableStateOf(false) }
+    var colorString by rememberSaveable { mutableStateOf("#FFFFFFFF") }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var customColorString by rememberSaveable { mutableStateOf<String?>(null) }
+    var deadlineIso by rememberSaveable { mutableStateOf<String?>(null) }
+
+
+    LaunchedEffect(item) {
+        item?.let {
+            text = it.text
+            importance = it.importance
+            isDone = it.isDone
+            colorString = it.color
+            customColorString = if (it.color !in presetColorsString) it.color else null
+            deadlineIso = it.deadline?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        } ?: run {
+            if (itemId != "new") {
+            }
+        }
     }
 
+    val deadline = deadlineIso?.let { LocalDateTime.parse(it) }
     val title = if (itemId == "new") "Новое дело" else "Редактирование"
 
     FormCard(
@@ -62,42 +68,40 @@ fun EditScreen(
         onTextChange = { text = it },
         onImportanceChange = { importance = it },
         onIsDoneChange = { isDone = it },
-        onColorChange = { newColorString ->
-            colorString = newColorString
+        onColorChange = { newColor ->
+            colorString = newColor
             customColorString = null
         },
-        onDeadlineChange = { deadline = it },
+        onDeadlineChange = { newDeadline ->
+            deadlineIso = newDeadline?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        },
         onShowDatePicker = { showDatePicker = true },
         onHideDatePicker = { showDatePicker = false },
         onSave = {
-            val newItem = Item(
-                uid = if (itemId == "new") UUID.randomUUID().toString() else itemId,
+            val updatedItem = Item(
+                uid = if (itemId == "new") java.util.UUID.randomUUID().toString() else itemId,
                 text = text,
                 importance = importance,
                 isDone = isDone,
                 deadline = deadline,
                 color = colorString
             )
-            onSave(newItem)
+            viewModel.saveItem(updatedItem)
+            onSaveSuccess()
         },
         onBack = onBack,
         onOpenColorPicker = {
-            Log.d("EditScreen", "Открытие color picker, colorString=$colorString")
             navController.navigate("colorPicker/$colorString")
         }
-
-
     )
 
     LaunchedEffect(Unit) {
         ColorHelper.selectedColor.collectLatest { newColor ->
             if (newColor != null) {
-                Log.d("EditScreen", "Новый color: $newColor")
-                customColorString = newColor
                 colorString = newColor
+                customColorString = newColor
                 ColorHelper.setSelectedColor(null)
             }
         }
     }
 }
-

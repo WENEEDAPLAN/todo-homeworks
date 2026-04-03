@@ -3,6 +3,8 @@ import android.util.Log
 import com.example.sokolovtodolist.model.Item
 import com.example.sokolovtodolist.model.json
 import com.example.sokolovtodolist.model.parse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
 import org.slf4j.LoggerFactory
@@ -120,12 +122,37 @@ class FileStorage(private val file: File) {
         val index = items.indexOfFirst { it.uid == item.uid }
         if (index != -1) {
             items[index] = item
-            Log.d("FileStorage", "Updated in memory, new color=${items[index].color}")
+            Log.d("FileStorage", "Обновление в памяти, новый цвет=${items[index].color}")
         } else {
             add(item)
         }
     }
+
+    suspend fun loadItems(): List<Item> = withContext(Dispatchers.IO) {
+        load()
+        items.toList()
+    }
+
+    suspend fun saveItems() = withContext(Dispatchers.IO) {
+        save()
+    }
+
+    suspend fun addItem(item: Item) = withContext(Dispatchers.IO) {
+        add(item)
+        save()
+    }
+
+    suspend fun updateItem(item: Item) = withContext(Dispatchers.IO) {
+        update(item)
+        save()
+    }
+
+    suspend fun deleteItem(uid: String) = withContext(Dispatchers.IO) {
+        remove(uid)
+        save()
+    }
 }
+
 
 
 
