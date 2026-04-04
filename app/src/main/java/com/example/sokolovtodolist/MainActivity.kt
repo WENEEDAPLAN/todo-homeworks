@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import com.example.sokolovtodolist.data.FileStorage
 import com.example.sokolovtodolist.data.TodoRepository
 import com.example.sokolovtodolist.network.MockTodoApi
+import com.example.sokolovtodolist.network.TokenManager
 import com.example.sokolovtodolist.ui.screens.ListViewModel
 import com.example.sokolovtodolist.ui.theme.TodoTheme
 import com.example.sokolovtodolist.ui.theme.components.ColorHelper
@@ -34,10 +35,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
 
+        val tokenManager = TokenManager(applicationContext)
         val storageFile = File(filesDir, "tasks.json")
         val fileStorage = FileStorage(storageFile)
         val api = MockTodoApi()
         val repository = TodoRepository(fileStorage, api)
+
+        tokenManager.token = "b75fe625-8bda-4f81-9837-09f573777ac1"
 
         setContent {
             TodoTheme {

@@ -1,4 +1,3 @@
-
 package com.example.sokolovtodolist.data
 
 import com.example.sokolovtodolist.model.Item
@@ -14,66 +13,68 @@ class TodoRepository(
     private val fileStorage: FileStorage,
     private val api: TodoApi
 ) {
-
     private val repositoryScope = CoroutineScope(Dispatchers.IO)
 
     private val _items = MutableStateFlow<List<Item>>(emptyList())
     val items: StateFlow<List<Item>> = _items.asStateFlow()
 
     init {
-
         repositoryScope.launch {
-            refreshFromCacheAndNetwork()
+            refreshFromNetwork()
         }
     }
 
-    private suspend fun refreshFromCacheAndNetwork() {
-
-        val cached = fileStorage.loadItems()
-        _items.value = cached
-
-
+    private suspend fun refreshFromNetwork() {
         try {
-            val remote = api.getItems()
-            if (remote.isNotEmpty()) {
-
-                fileStorage.load()
-                remote.forEach { item ->
-                    fileStorage.addItem(item)
-                }
+            val remoteItems = api.getItems()
+            if (remoteItems.isNotEmpty()) {
+                // Заменяем локальный кэш данными с сервера
+                fileStorage.load() // очистим
+                remoteItems.forEach { fileStorage.addItem(it) }
                 fileStorage.save()
+                _items.value = fileStorage.loadItems()
+            } else {
+                // Если сервер вернул пустой список, показываем кэш
                 _items.value = fileStorage.loadItems()
             }
         } catch (e: Exception) {
-
+            // Ошибка сети – показываем кэш
+            _items.value = fileStorage.loadItems()
         }
     }
 
     suspend fun addItem(item: Item) {
-        fileStorage.addItem(item)
-        _items.value = fileStorage.loadItems()
         try {
-            api.addItem(item)
-        } catch (e: Exception) {  }
+            api.addItem(item)          // сначала сервер
+            fileStorage.addItem(item)  // потом кэш
+            _items.value = fileStorage.loadItems()
+        } catch (e: Exception) {
+            // Ошибка – не обновляем локально, пробрасываем дальше для UI
+            throw e
+        }
     }
 
     suspend fun updateItem(item: Item) {
-        fileStorage.updateItem(item)
-        _items.value = fileStorage.loadItems()
         try {
             api.updateItem(item)
-        } catch (e: Exception) { }
+            fileStorage.updateItem(item)
+            _items.value = fileStorage.loadItems()
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
     suspend fun deleteItem(uid: String) {
-        fileStorage.deleteItem(uid)
-        _items.value = fileStorage.loadItems()
         try {
             api.deleteItem(uid)
-        } catch (e: Exception) { }
+            fileStorage.deleteItem(uid)
+            _items.value = fileStorage.loadItems()
+        } catch (e: Exception) {
+            throw e
+        }
     }
 
     suspend fun refresh() {
-        refreshFromCacheAndNetwork()
+        refreshFromNetwork()
     }
 }

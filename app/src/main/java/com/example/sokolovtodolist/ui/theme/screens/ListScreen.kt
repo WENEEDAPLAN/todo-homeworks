@@ -35,7 +35,7 @@ import com.example.sokolovtodolist.ui.screens.ListViewModel
 import com.example.sokolovtodolist.ui.theme.components.ItemCard
 import kotlin.math.roundToInt
 
-// DragValue для свайпа
+
 enum class DragValue { Settled, Open }
 
 @OptIn(ExperimentalMaterial3Api::class)
