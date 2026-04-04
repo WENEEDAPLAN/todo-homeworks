@@ -8,7 +8,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkClient {
-    private const val BASE_URL = "https://beta.mrdekk.ru"
+    private const val BASE_URL = "https://hive.mrdekk.ru"
 
     fun createApiService(tokenManager: TokenManager): TodoApiService {
         val authInterceptor = Interceptor { chain ->

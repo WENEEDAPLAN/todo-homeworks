@@ -8,9 +8,9 @@ import java.time.format.DateTimeFormatter
 data class TodoItemDto(
     @SerializedName("uid") val id: String,
     @SerializedName("text") val text: String,
-    @SerializedName("importance") val importance: String, // "unimportant", "ordinary", "important"
+    @SerializedName("importance") val importance: String,
     @SerializedName("color") val color: String? = null,
-    @SerializedName("deadline") val deadline: String? = null, // ISO-8601
+    @SerializedName("deadline") val deadline: String? = null,
     @SerializedName("isDone") val isDone: Boolean,
     @SerializedName("createdAt") val createdAt: String? = null,
     @SerializedName("updatedAt") val updatedAt: String? = null
