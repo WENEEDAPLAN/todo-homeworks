@@ -7,6 +7,7 @@ import com.example.sokolovtodolist.data.TodoRepository
 import com.example.sokolovtodolist.model.Item
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -34,6 +35,20 @@ class EditViewModel(
                 repository.addItem(item)
             } else {
                 repository.updateItem(item)
+            }
+        }
+    }
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    fun deleteItem(item: Item) {
+        viewModelScope.launch {
+            try {
+                repository.deleteItem(item.uid)
+                _error.value = null
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Ошибка удаления"
             }
         }
     }
