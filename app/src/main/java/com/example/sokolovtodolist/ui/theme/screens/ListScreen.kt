@@ -34,9 +34,9 @@ import com.example.sokolovtodolist.model.Item
 import com.example.sokolovtodolist.ui.screens.ListViewModel
 import com.example.sokolovtodolist.ui.theme.components.ItemCard
 import kotlin.math.roundToInt
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
-enum class DragValue { Settled, Open }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +87,7 @@ fun ListScreen(
     }
 }
 
+enum class DragValue { Settled, Open }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SwipeToRevealItem(
@@ -96,23 +97,24 @@ fun SwipeToRevealItem(
 ) {
     val density = LocalDensity.current
     val anchorWidth = with(density) { 80.dp.toPx() }
-    val decaySpec = rememberSplineBasedDecay<Float>()
 
+    // Якори сдвига
+    val anchors = remember {
+        DraggableAnchors {
+            DragValue.Settled at 0f
+            DragValue.Open at -anchorWidth
+        }
+    }
+
+    // Состояние перетаскивания
     val state = remember {
-        AnchoredDraggableState<DragValue>(
+        AnchoredDraggableState(
             initialValue = DragValue.Settled,
+            anchors = anchors,
             positionalThreshold = { distance -> distance * 0.5f },
             velocityThreshold = { with(density) { 100.dp.toPx() } },
-            snapAnimationSpec = tween(),
-            decayAnimationSpec = decaySpec
-        ).apply {
-            updateAnchors(
-                DraggableAnchors {
-                    DragValue.Settled at 0f
-                    DragValue.Open at -anchorWidth
-                }
-            )
-        }
+            animationSpec = tween()   // вместо snapAnimationSpec + decayAnimationSpec
+        )
     }
 
     Box(
@@ -121,7 +123,7 @@ fun SwipeToRevealItem(
             .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(15.dp))
     ) {
-
+        // Красная подложка (удаление)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -136,6 +138,7 @@ fun SwipeToRevealItem(
             }
         }
 
+        // Карточка задачи с возможностью сдвига
         Box(
             modifier = Modifier
                 .fillMaxWidth()

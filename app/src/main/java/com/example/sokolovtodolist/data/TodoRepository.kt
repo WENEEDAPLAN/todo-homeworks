@@ -1,5 +1,8 @@
 package com.example.sokolovtodolist.data
 
+import com.example.sokolovtodolist.data.db.TodoDao
+import com.example.sokolovtodolist.data.db.toEntity
+import com.example.sokolovtodolist.data.db.toItem
 import com.example.sokolovtodolist.model.Item
 import com.example.sokolovtodolist.network.TodoApi
 import kotlinx.coroutines.CoroutineScope
@@ -8,9 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.util.Log
 
 class TodoRepository(
-    private val fileStorage: FileStorage,
+    private val dao: TodoDao,
     private val api: TodoApi
 ) {
     private val repositoryScope = CoroutineScope(Dispatchers.IO)
@@ -20,6 +24,12 @@ class TodoRepository(
 
     init {
         repositoryScope.launch {
+            dao.getAll().collect { entities ->
+                _items.value = entities.map { it.toItem() }
+                Log.d("Repository", "Карточки обновлены: ${_items.value.size}")
+            }
+        }
+        repositoryScope.launch {
             refreshFromNetwork()
         }
     }
@@ -27,49 +37,51 @@ class TodoRepository(
     private suspend fun refreshFromNetwork() {
         try {
             val remoteItems = api.getItems()
-            if (remoteItems.isNotEmpty()) {
-                // Заменяем локальный кэш данными с сервера
-                fileStorage.load() // очистим
-                remoteItems.forEach { fileStorage.addItem(it) }
-                fileStorage.save()
-                _items.value = fileStorage.loadItems()
-            } else {
-                // Если сервер вернул пустой список, показываем кэш
-                _items.value = fileStorage.loadItems()
+            dao.deleteAll()
+            remoteItems.forEach { item ->
+                dao.insert(item.toEntity())
             }
         } catch (e: Exception) {
-            // Ошибка сети – показываем кэш
-            _items.value = fileStorage.loadItems()
+            Log.e("Repository", "Обновление сети провалено", e)
         }
     }
 
     suspend fun addItem(item: Item) {
+
+        dao.insert(item.toEntity())
         try {
-            api.addItem(item)          // сначала сервер
-            fileStorage.addItem(item)  // потом кэш
-            _items.value = fileStorage.loadItems()
+
+            api.addItem(item)
         } catch (e: Exception) {
-            // Ошибка – не обновляем локально, пробрасываем дальше для UI
+
+            dao.delete(item.toEntity())
+            Log.e("Repository", "Ошибка добавления. Откат", e)
             throw e
         }
     }
 
     suspend fun updateItem(item: Item) {
+        val oldEntity = dao.getById(item.uid)
+        dao.update(item.toEntity())
         try {
             api.updateItem(item)
-            fileStorage.updateItem(item)
-            _items.value = fileStorage.loadItems()
         } catch (e: Exception) {
+
+            oldEntity?.let { dao.update(it) }
+            Log.e("Repository", "Ошибка обновления. Откат", e)
             throw e
         }
     }
 
     suspend fun deleteItem(uid: String) {
+        val entity = dao.getById(uid)
+        entity?.let { dao.delete(it) }
         try {
             api.deleteItem(uid)
-            fileStorage.deleteItem(uid)
-            _items.value = fileStorage.loadItems()
         } catch (e: Exception) {
+
+            entity?.let { dao.insert(it) }
+            Log.e("Repository", "Ошибка удаления. Откат", e)
             throw e
         }
     }

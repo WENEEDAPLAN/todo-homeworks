@@ -13,6 +13,7 @@ import com.example.sokolovtodolist.ui.theme.components.FormCard
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private val presetColorsString = listOf(
     "#FFFFFFFF", "#FFFF0000", "#FF00FF00", "#FF0000FF",
@@ -38,7 +39,6 @@ fun EditScreen(
     var customColorString by rememberSaveable { mutableStateOf<String?>(null) }
     var deadlineIso by rememberSaveable { mutableStateOf<String?>(null) }
 
-
     LaunchedEffect(item) {
         item?.let {
             text = it.text
@@ -48,8 +48,7 @@ fun EditScreen(
             customColorString = if (it.color !in presetColorsString) it.color else null
             deadlineIso = it.deadline?.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
         } ?: run {
-            if (itemId != "new") {
-            }
+            if (itemId != "new") {}
         }
     }
 

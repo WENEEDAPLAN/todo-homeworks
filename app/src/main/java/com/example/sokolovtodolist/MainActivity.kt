@@ -17,9 +17,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.sokolovtodolist.data.FileStorage
 import com.example.sokolovtodolist.data.TodoRepository
-import com.example.sokolovtodolist.network.MockTodoApi
+import com.example.sokolovtodolist.data.db.TodoDatabase
+import com.example.sokolovtodolist.network.NetworkClient
+import com.example.sokolovtodolist.network.RealTodoApi
 import com.example.sokolovtodolist.network.TokenManager
 import com.example.sokolovtodolist.ui.screens.ListViewModel
 import com.example.sokolovtodolist.ui.theme.TodoTheme
@@ -28,20 +29,25 @@ import com.example.sokolovtodolist.ui.theme.components.ColorPickerScreen
 import com.example.sokolovtodolist.ui.theme.screens.EditScreen
 import com.example.sokolovtodolist.ui.theme.screens.EditViewModel
 import com.example.sokolovtodolist.ui.theme.screens.ListScreen
-import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
 
+        val database = TodoDatabase.getInstance(applicationContext)
+        val todoDao = database.todoDao()
+
+
         val tokenManager = TokenManager(applicationContext)
-        val storageFile = File(filesDir, "tasks.json")
-        val fileStorage = FileStorage(storageFile)
-        val api = MockTodoApi()
-        val repository = TodoRepository(fileStorage, api)
 
         tokenManager.token = "b75fe625-8bda-4f81-9837-09f573777ac1"
+
+        val apiService = NetworkClient.createApiService(tokenManager)
+        val todoApi = RealTodoApi(apiService)
+
+
+        val repository = TodoRepository(todoDao, todoApi)
 
         setContent {
             TodoTheme {
@@ -64,7 +70,6 @@ class MainActivity : ComponentActivity() {
             startDestination = "list"
         ) {
             composable("list") {
-
                 val listViewModel: ListViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
