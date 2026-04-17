@@ -1,5 +1,6 @@
 package com.example.sokolovtodolist.data
 
+import android.util.Log
 import com.example.sokolovtodolist.data.db.TodoDao
 import com.example.sokolovtodolist.data.db.toEntity
 import com.example.sokolovtodolist.data.db.toItem
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class TodoRepository(
     private val dao: TodoDao,
@@ -26,67 +26,78 @@ class TodoRepository(
         repositoryScope.launch {
             dao.getAll().collect { entities ->
                 _items.value = entities.map { it.toItem() }
-                Log.d("Repository", "Карточки обновлены: ${_items.value.size}")
+                Log.d("Repository", "Локальные карточки обновлены: ${_items.value.size}")
             }
-        }
-        repositoryScope.launch {
-            refreshFromNetwork()
         }
     }
 
-    private suspend fun refreshFromNetwork() {
+    suspend fun refreshFromNetwork() {
         try {
             val remoteItems = api.getItems()
             dao.deleteAll()
             remoteItems.forEach { item ->
                 dao.insert(item.toEntity())
             }
+            Log.d("Repository", "Загружено с сервера и сохранено в БД: ${remoteItems.size} записей")
         } catch (e: Exception) {
-            Log.e("Repository", "Обновление сети провалено", e)
+            Log.e("Repository", "Ошибка загрузки с сервера", e)
+            throw e
         }
     }
 
     suspend fun addItem(item: Item) {
-
-        dao.insert(item.toEntity())
         try {
 
-            api.addItem(item)
-        } catch (e: Exception) {
+            dao.insert(item.toEntity())
+            Log.d("Repository", "Задача добавлена локально: ${item.uid}")
 
-            dao.delete(item.toEntity())
-            Log.e("Repository", "Ошибка добавления. Откат", e)
+
+            try {
+                api.addItem(item)
+                Log.d("Repository", "Задача отправлена на сервер: ${item.uid}")
+            } catch (e: Exception) {
+                // Глушим ошибку сети. UI не узнает об ошибке, так как локально все сохранилось.
+                Log.w("Repository", "Сервер недоступен, задача сохранена только локально", e)
+            }
+        } catch (e: Exception) {
+            // Сюда попадем только если упадет сама база данных Room
+            Log.e("Repository", "Критическая ошибка БД при добавлении задачи", e)
             throw e
         }
     }
 
     suspend fun updateItem(item: Item) {
-        val oldEntity = dao.getById(item.uid)
-        dao.update(item.toEntity())
         try {
-            api.updateItem(item)
-        } catch (e: Exception) {
+            dao.update(item.toEntity())
+            Log.d("Repository", "Задача обновлена локально: ${item.uid}")
 
-            oldEntity?.let { dao.update(it) }
-            Log.e("Repository", "Ошибка обновления. Откат", e)
+            try {
+                api.updateItem(item)
+                Log.d("Repository", "Задача обновлена на сервере: ${item.uid}")
+            } catch (e: Exception) {
+                Log.w("Repository", "Сервер недоступен, задача обновлена только локально", e)
+            }
+        } catch (e: Exception) {
+            Log.e("Repository", "Ошибка при обновлении задачи в БД", e)
             throw e
         }
     }
 
     suspend fun deleteItem(uid: String) {
-        val entity = dao.getById(uid)
-        entity?.let { dao.delete(it) }
         try {
-            api.deleteItem(uid)
-        } catch (e: Exception) {
+            val entity = dao.getById(uid) ?: return
+            dao.delete(entity)
+            Log.d("Repository", "Задача удалена локально: $uid")
 
-            entity?.let { dao.insert(it) }
-            Log.e("Repository", "Ошибка удаления. Откат", e)
+            try {
+                api.deleteItem(uid)
+                Log.d("Repository", "Задача удалена на сервере: $uid")
+            } catch (e: Exception) {
+                Log.w("Repository", "Сервер недоступен, задача удалена только локально", e)
+            }
+        } catch (e: Exception) {
+            Log.e("Repository", "Ошибка при удалении задачи из БД", e)
             throw e
         }
-    }
-
-    suspend fun refresh() {
-        refreshFromNetwork()
     }
 }

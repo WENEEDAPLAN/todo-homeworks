@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -19,7 +20,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.sokolovtodolist.data.TodoRepository
 import com.example.sokolovtodolist.data.db.TodoDatabase
-import com.example.sokolovtodolist.network.NetworkClient
 import com.example.sokolovtodolist.network.RealTodoApi
 import com.example.sokolovtodolist.network.TokenManager
 import com.example.sokolovtodolist.ui.screens.ListViewModel
@@ -29,25 +29,33 @@ import com.example.sokolovtodolist.ui.theme.components.ColorPickerScreen
 import com.example.sokolovtodolist.ui.theme.screens.EditScreen
 import com.example.sokolovtodolist.ui.theme.screens.EditViewModel
 import com.example.sokolovtodolist.ui.theme.screens.ListScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
         val database = TodoDatabase.getInstance(applicationContext)
         val todoDao = database.todoDao()
 
-
         val tokenManager = TokenManager(applicationContext)
-
         tokenManager.token = "b75fe625-8bda-4f81-9837-09f573777ac1"
 
         val apiService = NetworkClient.createApiService(tokenManager)
         val todoApi = RealTodoApi(apiService)
 
-
         val repository = TodoRepository(todoDao, todoApi)
+
+        // При старте загружаем список с сервера
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                repository.refreshFromNetwork()
+            } catch (e: Exception) {
+                // Если нет интернета или сервер недоступен – продолжаем с локальными данными
+                android.util.Log.e("MainActivity", "Загрузка на бэкенд провалена, продрлжаем с локальными данными", e)
+            }
+        }
 
         setContent {
             TodoTheme {
@@ -125,7 +133,7 @@ class MainActivity : ComponentActivity() {
                 ColorPickerScreen(
                     initialColor = initialColorInt,
                     onColorSelected = { colorString ->
-                        ColorHelper.setSelectedColor(colorString)
+                        ColorHelper.setSelectedColor(colorString)  // ← используем ColorHelper
                         navController.popBackStack()
                     },
                     onDismiss = {

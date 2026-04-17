@@ -91,13 +91,15 @@ fun ColorPickerScreen(
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(onClick = onDismiss) { Text("Отмена") }
-            Button(onClick = {
-                val selectedColor = Color.hsv(hue, saturation, value).toArgb()
-                val colorString = String.format("#%08X", selectedColor)
-                Log.d("ColorPicker", "Кнопка нажата, Выбранный Цвет=$selectedColor, colorString=$colorString")
-                onColorSelected(colorString)
-            }) { Text("Выбрать") }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Button(onClick = onDismiss) { Text("Отмена") }
+                Button(onClick = {
+                    val selectedColor = Color.hsv(hue, saturation, value).toArgb()
+                    val colorString = String.format("#%08X", selectedColor)
+                    Log.d("ColorPicker", "Выбран цвет: $colorString")
+                    onColorSelected(colorString)
+                }) { Text("Выбрать") }
+            }
         }
     }
 }

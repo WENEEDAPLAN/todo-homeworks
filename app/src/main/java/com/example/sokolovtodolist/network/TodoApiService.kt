@@ -3,15 +3,25 @@ package com.example.sokolovtodolist.network
 import retrofit2.http.*
 
 interface TodoApiService {
-    @GET("items")
-    suspend fun getItems(): List<TodoItemDto>
+    @GET("list")
+    suspend fun getList(): TodoListResponse
 
-    @POST("item")
-    suspend fun addItem(@Body item: TodoItemDto): TodoItemDto
+    @POST("list")
+    suspend fun addItem(
+        @Header("X-Last-Known-Revision") revision: Int,
+        @Body request: TodoElementRequest
+    ): TodoElementResponse
 
-    @PUT("item/{id}")
-    suspend fun updateItem(@Path("id") id: String, @Body item: TodoItemDto): TodoItemDto
+    @PUT("list/{id}")
+    suspend fun updateItem(
+        @Header("X-Last-Known-Revision") revision: Int,
+        @Path("id") id: String,
+        @Body request: TodoElementRequest
+    ): TodoElementResponse
 
-    @DELETE("item/{id}")
-    suspend fun deleteItem(@Path("id") id: String)
+    @DELETE("list/{id}")
+    suspend fun deleteItem(
+        @Header("X-Last-Known-Revision") revision: Int,
+        @Path("id") id: String
+    ): TodoElementResponse
 }
