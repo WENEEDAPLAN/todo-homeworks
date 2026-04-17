@@ -113,7 +113,7 @@ fun SwipeToRevealItem(
             anchors = anchors,
             positionalThreshold = { distance -> distance * 0.5f },
             velocityThreshold = { with(density) { 100.dp.toPx() } },
-            animationSpec = tween()   // вместо snapAnimationSpec + decayAnimationSpec
+            animationSpec = tween()
         )
     }
 
@@ -138,7 +138,7 @@ fun SwipeToRevealItem(
             }
         }
 
-        // Карточка задачи с возможностью сдвига
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -3,43 +3,65 @@ package com.example.sokolovtodolist.network
 import com.example.sokolovtodolist.model.Importance
 import com.example.sokolovtodolist.model.Item
 import com.google.gson.annotations.SerializedName
+import java.time.Instant
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import java.time.ZoneId
+
 data class TodoItemDto(
-    @SerializedName("uid") val id: String,
+    @SerializedName("id") val id: String,
     @SerializedName("text") val text: String,
     @SerializedName("importance") val importance: String,
     @SerializedName("color") val color: String? = null,
-    @SerializedName("deadline") val deadline: String? = null,
-    @SerializedName("isDone") val isDone: Boolean,
-    @SerializedName("createdAt") val createdAt: String? = null,
-    @SerializedName("updatedAt") val updatedAt: String? = null
+    @SerializedName("deadline") val deadline: Long? = null,  // timestamp в секундах
+    @SerializedName("done") val done: Boolean,
+    @SerializedName("created_at") val createdAt: Long,
+    @SerializedName("changed_at") val changedAt: Long,
+    @SerializedName("last_updated_by") val lastUpdatedBy: String
+)
+data class TodoListResponse(
+    val status: String,
+    val list: List<TodoItemDto>,
+    val revision: Int
 )
 
+data class TodoElementRequest(
+    val element: TodoItemDto
+)
+
+data class TodoElementResponse(
+    val status: String,
+    val element: TodoItemDto,
+    val revision: Int
+)
 fun TodoItemDto.toItem(): Item = Item(
     uid = id,
     text = text,
     importance = when (importance) {
-        "unimportant" -> Importance.unimportant
+        "low" -> Importance.unimportant
         "important" -> Importance.important
         else -> Importance.ordinary
     },
     color = color ?: "#FFFFFFFF",
-    deadline = deadline?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) },
-    isDone = isDone
+    deadline = deadline?.let {
+        LocalDateTime.ofInstant(Instant.ofEpochSecond(it), ZoneId.systemDefault())
+    },
+    isDone = done
 )
 
-fun Item.toDto(): TodoItemDto = TodoItemDto(
+fun Item.toDto(deviceId: String): TodoItemDto = TodoItemDto(
     id = uid,
     text = text,
     importance = when (importance) {
-        Importance.unimportant -> "unimportant"
-        Importance.ordinary -> "ordinary"
+        Importance.unimportant -> "low"
         Importance.important -> "important"
+        else -> "basic"
     },
     color = color,
-    deadline = deadline?.format(DateTimeFormatter.ISO_DATE_TIME),
-    isDone = isDone,
-    createdAt = null,
-    updatedAt = null
+    deadline = deadline?.let {
+        it.atZone(ZoneId.systemDefault()).toEpochSecond()
+    },
+    done = isDone,
+    createdAt = System.currentTimeMillis() / 1000,
+    changedAt = System.currentTimeMillis() / 1000,
+    lastUpdatedBy = deviceId
 )

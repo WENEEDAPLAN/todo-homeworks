@@ -1,11 +1,10 @@
-
 package com.example.sokolovtodolist.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.sokolovtodolist.data.TodoRepository
 import com.example.sokolovtodolist.model.Item
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class ListViewModel(
@@ -29,12 +28,6 @@ class ListViewModel(
     fun deleteItem(item: Item) {
         viewModelScope.launch {
             repository.deleteItem(item.uid)
-        }
-    }
-
-    fun refresh() {
-        viewModelScope.launch {
-            repository.refresh()
         }
     }
 }
